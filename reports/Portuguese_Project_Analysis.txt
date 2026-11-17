@@ -1,0 +1,42 @@
+Portuguese Bank Marketing — Project Analysis (PRCP-1000)
+Ready to paste into the portal. Numbers are from the verified pipeline run
+on bank-additional-full.csv (41,188 rows, stratified 80/20, test = 8,236 clients,
+928 subscribers). If your own Run All of Portuguese_Day6_Final_Submission.ipynb
+gives slightly different numbers, replace them with your Section 16 table —
+your run is the final truth.
+
+---
+Dataset: 41,188 clients x 21 columns (UCI Bank Marketing, bank-additional-full.csv).
+Target y: no 88.73% / yes 11.27% — only 4,640 subscribers, so the data is imbalanced.
+12 duplicate rows removed; no blank cells — missingness hides inside 'unknown'
+categories (default is 20.87% unknown), kept as their own category, not deleted.
+
+Task 1 — Data analysis: subscriber rate rises with previous campaign success
+(poutcome=success: 65.1% subscribe) and is highest for students (31.4%) and
+retired clients (25.2%), lowest for blue-collar workers (6.9%).
+Key leakage found: duration (call length) looks like the strongest signal
+(subscribers averaged 553 sec vs 221 sec for non-subscribers), but it is known
+only after the call ends, so it was dropped before modelling.
+
+Task 2 — Classification: Logistic Regression vs Random Forest vs Gradient Boosting,
+all on the same stratified 80/20 split, judged on recall / F1 / AUC — not accuracy,
+because predicting "no" for everyone already scores 88.73% accuracy while finding
+nobody. First (unbalanced) models: LR accuracy 89.83%, recall(yes) only 21.01%,
+F1 31.76%; RF accuracy 89.25%, recall 29.20%, F1 37.98% (Day 6 verified run, 16 Nov).
+
+Task 3 — Imbalance handling: class_weight='balanced' plus threshold tuning
+(0.3–0.7). Balancing alone lifted LR recall 21.01% -> 64.55% and F1 31.76% -> 46.15%.
+Final pick: Gradient Boosting (balanced) at threshold 0.5 — F1 49.43%, ROC-AUC
+0.8152, recall(yes) 65.73% (610 of 928 subscribers found), precision(yes) 39.61%,
+accuracy 84.85%. Confusion matrix [[TN 6378, FP 930], [FN 318, TP 610]].
+A small hyperparameter check (max_iter=200, lr=0.05: F1 49.08%) gave no gain,
+so defaults were kept. Best tuned thresholds (LR @0.65, GB @0.70) are reported
+as options only — they were chosen on the test set, so they are slightly optimistic.
+Top drivers by permutation importance: nr.employed, euribor3m, cons.conf.idx.
+
+Challenges: class imbalance (accuracy is misleading here), duration leakage,
+the recall vs false-alarm trade-off (930 false positives is the price of finding
+two-thirds of subscribers instead of one-fifth), and Gradient Boosting being
+harder to explain than Logistic Regression — handled by pairing it with
+permutation importance and LR coefficients as a readable cross-check.
+Model saved as Portuguese_final_model.pkl (model + scaler + feature order).
